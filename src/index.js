@@ -39,14 +39,12 @@ const transformShorthandValue =
   process.env.NODE_ENV === 'production'
     ? baseTransformShorthandValue
     : (propName, inputValue) => {
-        try {
-          return baseTransformShorthandValue(propName, inputValue)
-        } catch (e) {
-          throw new Error(
-            `Failed to parse declaration "${propName}: ${inputValue}"`
-          )
-        }
+      try {
+        return baseTransformShorthandValue(propName, inputValue)
+      } catch (e) {
+        return null
       }
+    }
 
 export const getStylesForProperty = (propName, inputValue, allowShorthand) => {
   const isRawValue = allowShorthand === false || !(propName in transforms)
@@ -54,9 +52,16 @@ export const getStylesForProperty = (propName, inputValue, allowShorthand) => {
     ? transformRawValue(inputValue)
     : transformShorthandValue(propName, inputValue.trim())
 
-  return propValue && propValue.$merge
-    ? propValue.$merge
-    : { [propName]: propValue }
+  if (!!propValue && typeof propValue === 'string' && propValue.trim().length === 0) {
+    return propValue && propValue.$merge
+      ? propValue.$merge
+      : { [propName]: inputValue }
+  }
+  if (propValue !== null)
+    return propValue && propValue.$merge
+      ? propValue.$merge
+      : { [propName]: propValue }
+  return {}
 }
 
 export const getPropertyName = propName => {
@@ -74,6 +79,6 @@ export default (rules, shorthandBlacklist = []) =>
     const allowShorthand = shorthandBlacklist.indexOf(propertyName) === -1
     return Object.assign(
       accum,
-      getStylesForProperty(propertyName, value, allowShorthand)
+      getStylesForProperty(propertyName, value, allowShorthand),
     )
   }, {})
